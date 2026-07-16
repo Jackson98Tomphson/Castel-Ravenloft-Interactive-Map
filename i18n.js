@@ -9,25 +9,64 @@
   // caricamento forza il riscaricamento a ogni avvio della pagina.
   const bust = '?v=' + Date.now();
 
+  // Embedded UI strings — used as a fallback when the page is opened directly
+  // from disk (file://), where browsers block fetch() of local JSON files.
+  // When the site is served over http(s) or run in Obsidian, the JSON files in
+  // locales/ are fetched instead and remain the source of truth.
+  const UI_FALLBACK = {
+    en: {
+      "h1_title": "Castle Ravenloft",
+      "subtitle_interface": "Interactive Dungeon Master Map Interface",
+      "subtitle_chapter": "Curse of Strahd – Chapter 4",
+      "nav_enter_castle": "Enter Castle Ravenloft",
+      "footer_dm_only": "Built for Dungeon Master use only.",
+      "nav_enter": "Enter Castle",
+      "nav_up": "Go Upstairs",
+      "nav_down": "Go Downstairs",
+      "nav_exit": "Exit Castle",
+      "search_placeholder": "Search...",
+      "click_hint": "Click a number."
+    },
+    it: {
+      "h1_title": "Castel Ravenloft",
+      "subtitle_interface": "Interfaccia Interattiva per il Dungeon Master",
+      "subtitle_chapter": "La Maledizione di Strahd – Capitolo 4",
+      "nav_enter_castle": "Entra in Castel Ravenloft",
+      "footer_dm_only": "Solo per uso del Dungeon Master.",
+      "nav_enter": "Entra nel Castello",
+      "nav_up": "Sali",
+      "nav_down": "Scendi",
+      "nav_exit": "Esci dal Castello",
+      "search_placeholder": "Cerca...",
+      "click_hint": "Clicca un numero."
+    }
+  };
+
   function getLocale() {
     return localStorage.getItem('locale') || DEFAULT;
   }
 
   function applyUI(lang) {
+    function render(t) {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        if (t[el.dataset.i18n] !== undefined)
+          el.textContent = t[el.dataset.i18n];
+      });
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+        if (t[el.dataset.i18nPh] !== undefined)
+          el.placeholder = t[el.dataset.i18nPh];
+      });
+      document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('lang-active', btn.dataset.lang === lang);
+      });
+    }
+
     fetch(base + 'locales/' + lang + '.json' + bust)
       .then(r => r.json())
-      .then(t => {
-        document.querySelectorAll('[data-i18n]').forEach(el => {
-          if (t[el.dataset.i18n] !== undefined)
-            el.textContent = t[el.dataset.i18n];
-        });
-        document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-          if (t[el.dataset.i18nPh] !== undefined)
-            el.placeholder = t[el.dataset.i18nPh];
-        });
-        document.querySelectorAll('.lang-btn').forEach(btn => {
-          btn.classList.toggle('lang-active', btn.dataset.lang === lang);
-        });
+      .then(render)
+      .catch(() => {
+        // fetch is blocked when opened from disk (file://); use embedded copy
+        render(UI_FALLBACK[lang] || UI_FALLBACK[DEFAULT]);
       });
   }
 
