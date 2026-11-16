@@ -1419,7 +1419,7 @@ function linkify(text) {
     if (!roomExists(match)) return match;
     return '<span class="room-link" onclick="show(\'' + match + '\')">' + match + '</span>';
   });
-  out = out.replace(/area J\b/g, function(match) {
+  out = out.replace(/(area|зона|зоне|зону|область|области) J\b/g, function(match) {
     return '<span class="room-link" onclick="show(\'J\')">' + match + '</span>';
   });
   return out;
