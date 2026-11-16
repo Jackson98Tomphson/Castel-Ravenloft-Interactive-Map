@@ -13,9 +13,24 @@
     return localStorage.getItem('locale') || DEFAULT;
   }
 
+  const loaded = {};
+
+  function loadScript(path) {
+    if (!loaded[path]) {
+      loaded[path] = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = base + path + bust;
+        s.onload = resolve;
+        s.onerror = () => { delete loaded[path]; reject(new Error('Failed to load ' + path)); };
+        document.head.appendChild(s);
+      });
+    }
+    return loaded[path];
+  }
+
   function applyUI(lang) {
-    fetch(base + 'locales/' + lang + '.json' + bust)
-      .then(r => r.json())
+    return loadScript('locales/' + lang + '.js')
+      .then(() => window.I18N_UI[lang])
       .then(t => {
         document.querySelectorAll('[data-i18n]').forEach(el => {
           if (t[el.dataset.i18n] !== undefined)
@@ -34,23 +49,32 @@
   function applyRooms(lang) {
     if (lang === 'en') {
       window.ROOMS_LOCALE = {};
-      return;
+      return Promise.resolve();
     }
-    fetch(base + 'locales/rooms.' + lang + '.json' + bust)
-      .then(r => r.json())
-      .then(data => { window.ROOMS_LOCALE = data; })
+    return loadScript('locales/rooms.' + lang + '.js')
+      .then(() => { window.ROOMS_LOCALE = window.I18N_ROOMS[lang] || {}; })
       .catch(() => { window.ROOMS_LOCALE = {}; });
+  }
+
+  function rerenderOpenRoom() {
+    const codeEl = document.getElementById('room-code');
+    const room = codeEl && codeEl.innerText.trim();
+    if (room && typeof window.show === 'function') window.show(room);
+  }
+
+  function applyLocale(lang) {
+    document.documentElement.lang = lang;
+    Promise.all([applyUI(lang), applyRooms(lang)])
+      .then(rerenderOpenRoom)
+      .catch(err => console.error(err));
   }
 
   window.i18nSet = function (lang) {
     localStorage.setItem('locale', lang);
-    applyUI(lang);
-    applyRooms(lang);
+    applyLocale(lang);
   };
 
   document.addEventListener('DOMContentLoaded', function () {
-    const lang = getLocale();
-    applyUI(lang);
-    applyRooms(lang);
+    applyLocale(getLocale());
   });
 })();
